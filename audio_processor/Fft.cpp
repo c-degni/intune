@@ -1,4 +1,4 @@
-#include "utils.h"
+#include "Fft.h"
 
 complex_vector FFT(std::vector<double> inputSignal) {
     // Transform the input to be its complex counterpart (necessary for FFT algorithm)
