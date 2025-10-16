@@ -5,7 +5,7 @@
 using complex_number = std::complex<double>;
 using complex_vector = std::vector<std::complex<double>>;
 
-// TODO: May want to generalize the definition to work make sense in all contexts of using FFT
+// TODO: May want to generalize FFT definition to make sense in all contexts of using FFT
 /**
  * @param inputSignal A signal as a amplitude/time vector in its time domain. 
  * @return The input signal in it's frequency domain as a complex vector (COEFFCIENT => VALUE 
