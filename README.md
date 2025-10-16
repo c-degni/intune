@@ -1,2 +1,2 @@
 # intune
-Song recognition platform (Shazam clone)
+Song recognition platform
