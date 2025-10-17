@@ -1,14 +1,14 @@
 #include "Fft.h"
 
-complex_vector FFT(std::vector<double> inputSignal) {
-    // Transform the input to be its complex counterpart (necessary for FFT algorithm)
-    complex_vector complexInput;
-    for (double &amp : inputSignal) {
-        complexInput.push_back({amp, 0.0});
+complex_vector FFT(std::vector<double> p) {
+    // Transform polynomial p to be its complex counterpart (necessary for FFT algorithm)
+    complex_vector complexP;
+    for (double &coeff : p) {
+        complexP.push_back({coeff, 0.0});
     }
 
     // Recursively compute FFT
-    return recFFT(complexInput);
+    return recFFT(complexP);
 }
 
 void splitPolynomialByEvenOddDegrees(complex_vector &p, complex_vector &pEven, complex_vector &pOdd) {
@@ -25,7 +25,6 @@ complex_vector recFFT(complex_vector p) {
     if (n <= 1) return p;
     
     // Split polynomial into even and odd degree terms
-    complex_number w = {cos(2 * M_PI / n), sin(2 * M_PI / n)};
     complex_vector pEven;
     complex_vector pOdd;
     splitPolynomialByEvenOddDegrees(p, pEven, pOdd);
@@ -37,9 +36,8 @@ complex_vector recFFT(complex_vector p) {
     // Build up the value representation of p using pEven and pOdd
     complex_vector y(n);
     for (int j = 0; j < n / 2; j++) {
-        // w is jth root of unity
+        // w is defined as jth root of unity 
         complex_number w = {cos(2 * M_PI * j / n), sin(2 * M_PI * j / n)};
-
         y[j] = yEven[j] + w * yOdd[j];
         y[j + n / 2] = yEven[j] - w * yOdd[j];
     }
