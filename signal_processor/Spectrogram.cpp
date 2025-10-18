@@ -1,4 +1,5 @@
 #include "Spectrogram.h"
+#include <algorithm>
 
 void applyLowPassFilter(std::vector<double> &signal, int sampleRate, int cutoffFreq) {
     double rc = 1.0 / (2 * M_PI * cutoffFreq); // Time constant of analog RC low pass filter
@@ -56,13 +57,10 @@ void applyWindowFunction(std::vector<double> &signal, WindowFunction window) {
             }
             break;
         case Hanning:
-            break;
         case Triangle:
-            break;
         case Rectangle:
-            break;
         default:
-            break; 
+            break;
     }
 }
 
@@ -90,4 +88,61 @@ spectrogram Spectrogram(std::vector<double> signal, int sampleRate) {
 
     // Spectrogram[time][freq]
     return sgram;
+}
+
+void transpose(spectrogram &s) {
+    if (s.empty()) return; // Nothing to transpose
+    size_t X = s.size();
+    size_t Y = s[0].size();
+    spectrogram transposed(Y, complex_vector(X));
+
+    for (size_t x = 0; x < X; x++) {
+        for (size_t y = 0; y < Y; y++) {
+            transposed[y][x] = s[x][y];
+        }
+    }
+
+    s = transposed;
+}
+
+void visualize(spectrogram &s) {
+    if (s.empty()) return; // Nothing to visualize
+    size_t F = s.size();
+    size_t T = s[0].size();
+
+    // Convert amplitudes to decibels which is logarithmic (more distributed visual) and matches how we 
+    // actually perceive loudness
+    decibel_map dB(F, std::vector<double>(T));
+    double minDB = 1e9;
+    double maxDB = -1e9;
+    for (size_t f = 0; f < F; f++) {
+        for (size_t t = 0; t < T; t++) {
+            double magnitude = std::abs(s[f][t]); // Magnitude of complex amplitude (strength of frequency at time)
+            magnitude = 20.0 * std::log10(std::max(magnitude, 1e-10)); // Complex amplitude to dB conversion
+            dB[f][t] = magnitude;
+            minDB = std::min(minDB, magnitude);
+            maxDB = std::max(maxDB, magnitude);
+        }
+    }
+
+    // Represent decibel map as RGB pixels to create the "heat map" aspect
+    cv::Mat img(F, T, CV_8UC1); // 8U = 8 bit pixel (0 - 255), C1 = grayscale (first channel)
+    for (size_t f = 0; f < F; f++) {
+        for (size_t t = 0; t < T; t++) {
+            // Scale pixel brightness to be 0 <= b <= 1 for clear relative intensity
+            double brightness = (dB[f][t] - minDB) / (maxDB - minDB);
+            
+            // Safeguards
+            if (brightness > 1.0) brightness = 1.0; 
+            if (brightness < 0.0) brightness = 0.0;
+
+            // Transform pixel to RGB but flip image vertically to neutralize drawing rows backwards (an OpenCV thing)
+            img.at<uint8_t>(F - 1 - f, t) = static_cast<uint8_t>(brightness * 255.0);
+        }
+    }
+
+    // TODO: I may consider file output as an option; add output type as a specification parameter.
+    cv::applyColorMap(img, img, cv::COLORMAP_MAGMA);
+    cv::imshow("Spectrogram", img);
+    cv::waitKey(0); // Pauses program until any key press
 }

@@ -1,7 +1,9 @@
 #include <vector>
 #include "Fft.h"
+#include <opencv2/opencv.hpp>
 
 using spectrogram = std::vector<std::vector<complex_number>>;
+using decibel_map = std::vector<std::vector<double>>;
 
 #define MAX_FREQUENCY 5000 // 5 kHz
 #define DOWNSAMPLE_RATIO 4 // Reduce sample to 1/4 of its original sample rate
@@ -60,3 +62,23 @@ void applyWindowFunction(std::vector<double> &signal, WindowFunction window = Re
  * as it is conventionally oriented.
  */
 spectrogram Spectrogram(std::vector<double> signal, int sampleRate);
+
+/**
+ * Transposing a spectrogram results in the indexing switching from [time][frequency] to [frequency][time] or
+ * vice versa depending on the structure of s initially. The values at indices are still respective complex
+ * amplitudes.
+ * 
+ * @param s The spectrogram to be tranposed.
+ * 
+ * @note Transposing a matrix twice returns it to its original configuration. The same holds for spectrograms!
+ */
+void transpose(spectrogram &s);
+
+/**
+ * Visualize a spectrogram as a frequency over time "heat map" plot.
+ * 
+ * @param s The spectrogram to be visualized.
+ * 
+ * @note It is assumed the spectrogram is conventionally indexed: [frequency][time].
+ */
+void visualize(spectrogram &s);
