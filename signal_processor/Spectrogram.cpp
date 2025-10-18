@@ -46,6 +46,48 @@ void downsample(std::vector<double> &signal, int sampleRate, int targetSampleRat
     signal = resampledSignal;
 }
 
-spectrogram Spectrogram(std::vector<double> sample, int sampleRate) {
+void applyWindowFunction(std::vector<double> &signal, WindowFunction window) {
+    // TODO: May find it interesting to implement rectangle, triangle .. later 
+    size_t n = signal.size();
+    switch (window) {
+        case Hamming:
+            for (size_t i = 0; i < n; i++) {
+                signal[i] *= (.54 - .46 * std::cos(2 * M_PI * i / (n - 1)));
+            }
+            break;
+        case Hanning:
+            break;
+        case Triangle:
+            break;
+        case Rectangle:
+            break;
+        default:
+            break; 
+    }
+}
 
+spectrogram Spectrogram(std::vector<double> signal, int sampleRate) {
+    applyLowPassFilter(signal, sampleRate, MAX_FREQUENCY);
+    downsample(signal, sampleRate, sampleRate / DOWNSAMPLE_RATIO);
+
+    size_t n = signal.size();
+    int numOfWindows = signal.size() / (FRAME_SIZE - HOP_SIZE);
+    spectrogram sgram = spectrogram(numOfWindows);
+
+    // Perform Short Time Fourier Transform (STFT) by first splitting the signal into short overlapping 
+    // windows (frames) where each is a time slice of samples. 
+    for (int i = 0; i < numOfWindows; i++) {
+        int frameStart = i * HOP_SIZE;
+        int frameEnd = std::min(int(n), frameStart + FRAME_SIZE);
+        std::vector<double> frame(FRAME_SIZE);
+        std::copy(signal.begin() + frameStart, signal.begin() + frameEnd, frame.begin());
+
+        // After applying hamming window function to the time frame, use FFT to convert frame from time to 
+        // frequency domain resulting in the corresponding frequency bins for the time frame. 
+        applyWindowFunction(frame, Hamming);
+        sgram.push_back(FFT(frame));
+    } 
+
+    // Spectrogram[time][freq]
+    return sgram;
 }
