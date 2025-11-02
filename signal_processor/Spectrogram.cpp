@@ -22,7 +22,7 @@ void applyLowPassFilter(std::vector<double> &signal, int sampleRate, int cutoffF
 
 void downsample(std::vector<double> &signal, int sampleRate, int targetSampleRate) {
     if (sampleRate <= 0 || targetSampleRate <= 0) return; // Sample rates must be positive
-    if (sampleRate > targetSampleRate) return; // We need a lower target than original rate to DOWNsample
+    if (sampleRate <= targetSampleRate) return; // We need a lower target than original rate to DOWNsample
     
     // Since we are not implementing upsampling, which would enable resampling, we must assume the 
     // target rate to be an integer division of the original. This means if our original to target 
@@ -39,7 +39,7 @@ void downsample(std::vector<double> &signal, int sampleRate, int targetSampleRat
         size_t sampleEndIdx = std::min(i + ratio, n); // End of signal is hard end to any sample window
 
         // Use the average (to avoid aliasing) of the sample window to construct the resampled signal 
-        for (size_t j = i; i < sampleEndIdx; j++) sum += signal[j];
+        for (size_t j = i; j < sampleEndIdx; j++) sum += signal[j];
         double sampleAvg = sum / (sampleEndIdx - i);
         resampledSignal.push_back(sampleAvg);
     }
@@ -65,12 +65,15 @@ void applyWindowFunction(std::vector<double> &signal, WindowFunction window) {
 }
 
 spectrogram Spectrogram(std::vector<double> signal, int sampleRate) {
-    applyLowPassFilter(signal, sampleRate, MAX_FREQUENCY);
+    applyLowPassFilter(signal, sampleRate, sampleRate / DOWNSAMPLE_RATIO);
     downsample(signal, sampleRate, sampleRate / DOWNSAMPLE_RATIO);
 
     size_t n = signal.size();
     int numOfWindows = signal.size() / (FRAME_SIZE - HOP_SIZE);
-    spectrogram sgram = spectrogram(numOfWindows);
+    std::cerr << "Frames: " << numOfWindows << ", Frame size: " << FRAME_SIZE << "\n";
+    // spectrogram sgram = spectrogram(numOfWindows);
+    spectrogram sgram;
+    sgram.reserve(numOfWindows);
 
     // Perform Short Time Fourier Transform (STFT) by first splitting the signal into short overlapping 
     // windows (frames) where each is a time slice of samples. 
@@ -106,7 +109,10 @@ void transpose(spectrogram &s) {
 }
 
 void visualize(spectrogram &s) {
-    if (s.empty()) return; // Nothing to visualize
+    if (s.empty()) {
+        std::cerr << "Nothing to visualize.\n";
+        return; // Nothing to visualize
+    }
     size_t F = s.size();
     size_t T = s[0].size();
 
@@ -117,11 +123,18 @@ void visualize(spectrogram &s) {
     double maxDB = -1e9;
     for (size_t f = 0; f < F; f++) {
         for (size_t t = 0; t < T; t++) {
-            double magnitude = std::abs(s[f][t]); // Magnitude of complex amplitude (strength of frequency at time)
+            double magnitude = std::abs(s[f][t]) / FRAME_SIZE; // Magnitude of complex amplitude (strength of frequency at time)
             magnitude = 20.0 * std::log10(std::max(magnitude, 1e-10)); // Complex amplitude to dB conversion
             dB[f][t] = magnitude;
             minDB = std::min(minDB, magnitude);
             maxDB = std::max(maxDB, magnitude);
+        }
+    }
+
+    const double dynamicRange = 80.0;
+    for (auto &row : dB) {
+        for (auto &col : row) {
+            col = std::max(col, maxDB - dynamicRange);
         }
     }
 
@@ -142,7 +155,10 @@ void visualize(spectrogram &s) {
     }
 
     // TODO: I may consider file output as an option; add output type as a specification parameter.
+    // cv::rotate(img, img, cv::ROTATE_180_CLOCKWISE);
     cv::applyColorMap(img, img, cv::COLORMAP_MAGMA);
+    cv::namedWindow("Spectrogram", cv::WINDOW_NORMAL);
+    // cv::resizeWindow("Spectrogram", T * 2, F * 2);
     cv::imshow("Spectrogram", img);
     cv::waitKey(0); // Pauses program until any key press
 }
